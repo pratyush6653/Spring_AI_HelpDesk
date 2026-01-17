@@ -1,7 +1,7 @@
 // src/Services/chatServices.js
 import axios from "axios";
 
-const baseURL = "http://localhost:8090";
+const baseURL = "https://spring-ai-helpdesk.onrender.com";
 
 export const sendMessagesToServer = async (message, conversationId) => {
   const payload = {
