@@ -28,11 +28,13 @@ public class ChatController {
         log.info("🔄 Received chat request from client");
         if (conversationId == null || conversationId.isBlank()) {
             conversationId = UUID.randomUUID().toString();
-            log.info("🆕 New conversation created: {}", conversationId);
         }
+        log.info("chat request : {}", chatRequest.toString());
+        log.info("🆕  conversation created: {}", conversationId);
         chatMemory.add(conversationId, new UserMessage(chatRequest.messages().content()));
         OpenRouterResponse openRouterResponse = chatService.processMessage(chatRequest, conversationId);
         log.info("📬 Sending response back to client");
+        log.info("chat response : {}", openRouterResponse.toString());
         return ResponseEntity.ok()
                 .header("X-Conversation-Id", conversationId)
                 .body(openRouterResponse);

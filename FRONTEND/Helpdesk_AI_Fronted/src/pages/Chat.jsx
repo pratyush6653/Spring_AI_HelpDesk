@@ -1,130 +1,202 @@
-import React from "react"
+// src/pages/Chat.jsx
+import React, { useEffect, useRef, useState } from "react";
+import { Search, MoreVertical, Send, Plus, LogOut, Bot, X } from "lucide-react";
+import { useNavigate } from "react-router";
+import { sendMessagesToServer } from "../Services/chatServices";
+import "./Chat.css";
+
+const CHATS = [
+  { id: 1, name: "Spring boot..", lastMessage: "How to create rest api in spring boot?", unread: 2, initials: "SB" },
+  { id: 2, name: "React helpers", lastMessage: "Can you suggest a hook for this?", unread: 0, initials: "RH" },
+  { id: 3, name: "Database team", lastMessage: "Schema migration planned for tonight.", unread: 1, initials: "DB" },
+];
 
 function Chat() {
-  const [selectedChat, setSelectedChat] = useState(1);
-  const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState([
-    { id: 1, text: "Hey there! How are you?", sender: "received", time: "10:00 AM", status: "read" },
-    { id: 2, text: "I'm good! Working on a new project.", sender: "sent", time: "10:02 AM", status: "read" },
-    { id: 3, text: "That's great! What kind of project?", sender: "received", time: "10:05 AM", status: "read" },
-    { id: 4, text: "It's a chat application like WhatsApp", sender: "sent", time: "10:07 AM", status: "delivered" },
-    { id: 5, text: "Awesome! Can I see it?", sender: "received", time: "10:10 AM", status: "read" },
-    { id: 6, text: "Sure, I'll share the demo link soon.", sender: "sent", time: "10:12 AM", status: "sent" },
-  ]);
+  const [activeChat, setActiveChat] = useState(CHATS[0]);
+  const [messages, setMessages] = useState([]);
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const [conversationId, setConversationId] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [showEndChatConfirm, setShowEndChatConfirm] = useState(false);
+  const [chatEnded, setChatEnded] = useState(true); // Start with chat ended state
 
-  const chats = [
-    { id: 1, name: "John Doe", avatar: "JD", lastMessage: "Sure, I'll share the demo link soon.", time: "10:12 AM", unread: 2, online: true },
-    { id: 2, name: "Alice Smith", avatar: "AS", lastMessage: "Meeting at 3 PM tomorrow", time: "Yesterday", unread: 0, online: true },
-    { id: 3, name: "Bob Johnson", avatar: "BJ", lastMessage: "Thanks for your help!", time: "Yesterday", unread: 0, online: false },
-    { id: 4, name: "Emma Wilson", avatar: "EW", lastMessage: "Are we still on for Friday?", time: "Monday", unread: 1, online: true },
-    { id: 5, name: "Mike Brown", avatar: "MB", lastMessage: "The documents are ready", time: "Monday", unread: 0, online: false },
-    { id: 6, name: "Sarah Davis", avatar: "SD", lastMessage: "Let's catch up soon", time: "Sunday", unread: 0, online: true },
-    { id: 7, name: "David Miller", avatar: "DM", lastMessage: "Happy Birthday! 🎉", time: "Saturday", unread: 0, online: false },
-    { id: 8, name: "Lisa Taylor", avatar: "LT", lastMessage: "Can you review my PR?", time: "Friday", unread: 3, online: true },
-  ];
+  const endRef = useRef(null);
+  const inputRef = useRef(null);
+  const navigate = useNavigate();
 
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      const newMessage = {
-        id: messages.length + 1,
-        text: message,
-        sender: "sent",
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: "sent"
-      };
-      setMessages([...messages, newMessage]);
-      setMessage("");
+  // Initialize conversation when component mounts
+  useEffect(() => {
+    if (!conversationId) {
+      startNewConversation();
+    }
+  }, []);
+
+  // Scroll to bottom when messages update
+  useEffect(() => {
+    if (endRef.current) endRef.current.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping]);
+
+  // Start a new conversation
+  const startNewConversation = () => {
+    const newId = "conv-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
+    console.log("Starting new conversation with ID:", newId);
+    
+    setConversationId(newId);
+    setChatEnded(false);
+    setMessages([
+      { 
+        id: 1, 
+        author: "bot", 
+        text: "Hello! I'm your AI Help Desk Assistant. How can I help you today?", 
+        at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+      },
+    ]);
+    setShowEndChatConfirm(false);
+    setDraft("");
+    
+    // Focus input after a short delay
+    setTimeout(() => {
+      if (inputRef.current) inputRef.current.focus();
+    }, 100);
+  };
+
+  const handleEndChat = () => {
+    if (conversationId && !chatEnded) {
+      setShowEndChatConfirm(true);
+    }
+  };
+
+  const confirmEndChat = () => {
+    // Add a final message from the bot
+    const finalMessage = {
+      id: messages.length + 1,
+      author: "bot",
+      text: "Thank you for chatting with me. This conversation has been ended. Click 'New Chat' button to start a new conversation.",
+      at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    
+    setMessages(prev => [...prev, finalMessage]);
+    setChatEnded(true);
+    setShowEndChatConfirm(false);
+    setDraft("");
+    setConversationId(""); // Clear conversation ID
+  };
+
+  const cancelEndChat = () => {
+    setShowEndChatConfirm(false);
+  };
+
+  const handleSendMessage = async () => {
+    const textMessage = draft.trim();
+    if (!textMessage || sending) return;
+
+    // If chat is ended or no conversation ID, start a new one
+    let currentId = conversationId;
+    if (chatEnded || !currentId) {
+      currentId = "conv-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
+      console.log("Starting new conversation with ID:", currentId);
+      setConversationId(currentId);
+      setChatEnded(false);
       
-      // Simulate reply after 1 second
-      setTimeout(() => {
-        const replies = [
-          "That's interesting!",
-          "I see what you mean.",
-          "Can you explain more?",
-          "Got it, thanks!",
-          "Looking forward to it!"
-        ];
-        const randomReply = replies[Math.floor(Math.random() * replies.length)];
-        const replyMessage = {
-          id: messages.length + 2,
-          text: randomReply,
-          sender: "received",
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: "read"
-        };
-        setMessages(prev => [...prev, replyMessage]);
-      }, 1000);
+      // Reset messages for new conversation
+      setMessages([
+        { 
+          id: 1, 
+          author: "bot", 
+          text: "Hello! I'm your AI Help Desk Assistant. How can I help you today?", 
+          at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+        },
+      ]);
+    }
+
+    setSending(true);
+
+    // Add user message
+    const userMessage = {
+      id: messages.length + 1,
+      author: "user",
+      text: textMessage,
+      at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setMessages(prev => [...prev, userMessage]);
+    setDraft("");
+
+    try {
+      setIsTyping(true);
+
+      // Send message to backend using the conversation ID
+      const responseFromAI = await sendMessagesToServer(textMessage, currentId);
+
+      // Extract content safely
+      const aiText = responseFromAI?.content || "Sorry, no response from server";
+
+      // Add AI message
+      const aiMessage = {
+        id: messages.length + 2,
+        author: "bot",
+        text: aiText,
+        timestamp: responseFromAI?.timestamp,
+        at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+
+      setMessages(prev => [...prev, aiMessage]);
+      setIsTyping(false);
+
+    } catch (error) {
+      console.error("Error sending message:", error);
+      setIsTyping(false);
+
+      setMessages(prev => [...prev, {
+        id: messages.length + 2,
+        author: "bot",
+        text: "Sorry, I encountered an error connecting to the server. Please try again.",
+        at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }]);
+    } finally {
+      setSending(false);
+      if (inputRef.current) inputRef.current.focus();
     }
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !sending) {
       e.preventDefault();
       handleSendMessage();
     }
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'sent': return <Check size={14} />;
-      case 'delivered': return <CheckCheck size={14} />;
-      case 'read': return <CheckCheck size={14} color="#53bdeb" />;
-      default: return null;
-    }
-  };
-
-  const selectedChatData = chats.find(chat => chat.id === selectedChat);
-
   return (
-    <div className="chat-container">
+    <div className="chat-page">
       {/* Sidebar */}
       <div className="chat-sidebar">
-        {/* Header */}
-        <div className="chat-header">
-          <div className="chat-profile">
-            <div className="chat-avatar">YP</div>
-            <div className="chat-user-info">
-              <h3>Your Profile</h3>
-              <p>Online</p>
+        <div className="sidebar-header">
+          <div className="sidebar-actions">
+            <button className="icon-btn" title="New Chat" onClick={startNewConversation}>
+              <Plus size={18} />
+            </button>
+            <div className="search-box">
+              <input placeholder="Search chats..." type="text" />
+              <Search size={16} />
             </div>
-          </div>
-          <div className="chat-header-icons">
-            <Menu size={20} />
-            <MoreVertical size={20} />
-          </div>
-        </div>
-
-        {/* Search */}
-        <div className="chat-search">
-          <div className="chat-search-box">
-            <Search size={18} />
-            <input type="text" placeholder="Search or start new chat" />
           </div>
         </div>
 
         {/* Chat List */}
         <div className="chat-list">
-          {chats.map((chat) => (
+          {CHATS.map((chat) => (
             <div 
               key={chat.id} 
-              className={`chat-item ${selectedChat === chat.id ? 'active' : ''}`}
-              onClick={() => setSelectedChat(chat.id)}
+              className={`chat-item ${activeChat.id === chat.id ? 'active' : ''}`}
+              onClick={() => setActiveChat(chat)}
             >
-              <div className="chat-item-avatar">
-                {chat.avatar}
-                {chat.online && <div className="chat-online"></div>}
-              </div>
-              <div className="chat-item-info">
-                <h4>
-                  {chat.name}
-                  <span className="chat-item-time">{chat.time}</span>
-                </h4>
-                <div className="chat-item-message">
-                  <span className="chat-item-preview">{chat.lastMessage}</span>
-                  {chat.unread > 0 && (
-                    <span className="chat-unread">{chat.unread}</span>
-                  )}
+              <div className="avatar">{chat.initials}{chat.unread > 0 && <span className="badge">{chat.unread}</span>}</div>
+              <div className="chat-info">
+                <div className="chat-title">
+                  <h4>{chat.name}</h4>
+                  <span className="time">10:30 AM</span>
                 </div>
+                <p>{chat.lastMessage}</p>
               </div>
             </div>
           ))}
@@ -133,88 +205,121 @@ function Chat() {
 
       {/* Main Chat Area */}
       <div className="chat-main">
-        {/* Chat Header */}
-        <div className="chat-main-header">
-          <div className="chat-contact-info">
-            <div className="chat-contact-avatar">
-              {selectedChatData?.avatar || "?"}
-            </div>
-            <div className="chat-contact-details">
-              <h3>{selectedChatData?.name || "Select a chat"}</h3>
-              <p>{selectedChatData?.online ? "Online" : "Last seen recently"}</p>
+        {/* Header */}
+        <div className="chat-header">
+          <div className="chat-user">
+            <div className="avatar"><Bot size={18} /></div>
+            <div className="user-info">
+              <h3>AI Help Desk Assistant</h3>
+              <p>{isTyping ? "Typing..." : chatEnded ? "Chat Ended" : "Online"}</p>
             </div>
           </div>
-          <div className="chat-main-icons">
-            <Video size={22} />
-            <Phone size={22} />
-            <Search size={22} />
-            <MoreVertical size={22} />
+          <div className="header-actions">
+            <button className="icon-btn" onClick={() => navigate("/")} title="Back to Home"><LogOut size={18} /></button>
+            <button className="icon-btn" title="More options"><MoreVertical size={18} /></button>
           </div>
         </div>
 
-        {/* Messages Area */}
-        <div className="chat-messages">
-          {selectedChat ? (
+        {/* Messages Container */}
+        <div className="messages-container">
+          {messages.length === 0 && !isTyping ? (
+            <div className="no-messages">
+              <div className="avatar large"><Bot size={24} /></div>
+              <h3>AI Help Desk Assistant</h3>
+              <p>Start a new conversation to get help with your questions.</p>
+              <button className="start-chat-btn" onClick={startNewConversation}>
+                <Plus size={16} />
+                <span>Start New Chat</span>
+              </button>
+            </div>
+          ) : (
             <>
-              <div className="chat-date-separator">
-                <span>Today</span>
-              </div>
               {messages.map((msg) => (
-                <div key={msg.id} className={`message ${msg.sender}`}>
-                  <div className="message-bubble">
-                    {msg.text}
-                  </div>
-                  <div className="message-time">
-                    {msg.time}
-                    {msg.sender === 'sent' && (
-                      <span className="message-status">
-                        {getStatusIcon(msg.status)}
-                      </span>
-                    )}
+                <div key={msg.id} className={`message ${msg.author}`}>
+                  <div className="message-content">
+                    <div className="text">{msg.text}</div>
+                    {msg.title && <div className="title">{msg.title}</div>}
+                    <div className="time">{msg.at}</div>
                   </div>
                 </div>
               ))}
+
+              {isTyping && (
+                <div className="typing-indicator">
+                  <span className="typing-dot"></span>
+                  <span className="typing-dot"></span>
+                  <span className="typing-dot"></span>
+                </div>
+              )}
+              <div ref={endRef} />
             </>
-          ) : (
-            <div className="chat-empty-state">
-              <div className="chat-empty-icon">
-                <CheckCheck size={48} />
-              </div>
-              <h3>Welcome to Help Desk Chat</h3>
-              <p>Select a conversation from the sidebar to start chatting</p>
-            </div>
           )}
         </div>
 
-        {/* Message Input */}
-        {selectedChat && (
-          <div className="chat-input-container">
-            <div className="chat-input-icons">
-              <Smile size={22} />
-              <Paperclip size={22} />
-            </div>
-            <div className="chat-input-box">
-              <input
-                type="text"
-                placeholder="Type a message"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-              />
-            </div>
-            {message.trim() ? (
-              <button className="chat-send-button" onClick={handleSendMessage}>
-                <Send size={20} />
-              </button>
-            ) : (
-              <div className="chat-input-icons">
-                <Mic size={22} />
+        {/* End Chat Confirmation Modal */}
+        {showEndChatConfirm && (
+          <div className="end-chat-confirm">
+            <div className="confirm-modal">
+              <h4>End this chat?</h4>
+              <p>Are you sure you want to end this conversation? You'll need to start a new chat to continue.</p>
+              <div className="confirm-actions">
+                <button className="cancel-btn" onClick={cancelEndChat}>Cancel</button>
+                <button className="end-btn" onClick={confirmEndChat}>End Chat</button>
               </div>
-            )}
+            </div>
           </div>
         )}
+
+        {/* Action Button Section - Shows either End Chat or New Chat button */}
+        <div className="action-button-section">
+          {chatEnded ? (
+            <button 
+              className="new-chat-action-btn" 
+              onClick={startNewConversation}
+              title="Start new chat"
+            >
+              <Plus size={16} />
+              <span>New Chat</span>
+            </button>
+          ) : (
+            <button 
+              className="end-chat-action-btn" 
+              onClick={handleEndChat}
+              disabled={showEndChatConfirm || sending}
+              title="End current chat"
+            >
+              <X size={16} />
+              <span>End Chat</span>
+            </button>
+          )}
+        </div>
+
+        {/* Input Area */}
+        <div className="input-area">
+          <div className="input-container">
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder={chatEnded ? "Chat ended. Click 'New Chat' button above to start..." : "Type your message here..."}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyPress={handleKeyPress}
+              disabled={sending}
+            />
+            <button 
+              className="send-btn glossy" 
+              onClick={handleSendMessage} 
+              disabled={sending || !draft.trim()} 
+              title="Send message"
+            >
+              <Send size={16} />
+              <span>Send</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-export default Chat
+
+export default Chat;
