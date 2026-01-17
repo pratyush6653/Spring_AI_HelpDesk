@@ -5,13 +5,29 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(),
+  plugins: [
+    react(),
     tailwindcss()
   ],
-   resolve: {
+  resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Add these settings for Vercel
+  base: './',
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined
+      }
+    }
+  },
+  // Optional: For better Vercel compatibility
+  server: {
+    host: true,
+    port: 3000
+  }
 })
-
