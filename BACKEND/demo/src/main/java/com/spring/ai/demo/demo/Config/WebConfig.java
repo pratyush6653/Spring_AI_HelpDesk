@@ -13,7 +13,7 @@ public class WebConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOrigins("https://spring-ai-help-desk-nxzc9x5od-pratyush6653s-projects.vercel.app")
+                        .allowedOrigins("https://spring-ai-help-desk.vercel.app")
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*");
             }
