@@ -214,10 +214,10 @@ function Chat() {
               <p>{isTyping ? "Typing..." : chatEnded ? "Chat Ended" : "Online"}</p>
             </div>
           </div>
-          <div className="header-actions">
+          {/* <div className="header-actions">
             <button className="icon-btn" onClick={() => navigate("/")} title="Back to Home"><LogOut size={18} /></button>
             <button className="icon-btn" title="More options"><MoreVertical size={18} /></button>
-          </div>
+          </div> */}
         </div>
 
         {/* Messages Container */}
@@ -283,12 +283,13 @@ function Chat() {
             </button>
           ) : (
             <button 
+            
               className="end-chat-action-btn" 
               onClick={handleEndChat}
               disabled={showEndChatConfirm || sending}
               title="End current chat"
             >
-              <X size={16} />
+              
               <span>End Chat</span>
             </button>
           )}

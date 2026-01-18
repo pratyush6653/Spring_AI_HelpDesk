@@ -59,7 +59,7 @@ public class OpenRouterServiceImpl implements OpenRouterServices {
             chatMemory.add(conversationId, new UserMessage(request.messages().content()));
             OpenRouterResponse content = client.prompt()
                     .system(systemPromptResource)
-                    .system("It is mandatory to use the provided tools to assist with help desk ticket management.")
+                    .system("It is mandatory to use the provided tools to assist the User ")
                     .system("use the tools exactly as described ")
                     .tools(ticketDatabaseTool)
                     .options(ChatOptions.builder()
@@ -92,36 +92,5 @@ public class OpenRouterServiceImpl implements OpenRouterServices {
         // Model  forgot timezone → force UTC
         return Instant.parse(ts + "Z");
     }
-
-
-//    public Flux<String> StreamResponse(
-//            ChatClient client,
-//            OpenRouterRequest request,
-//            String modelName, String conversationId) {
-//        try {
-//            chatMemory.add(conversationId, new UserMessage(request.messages().content()));
-//            AtomicBoolean toolUsed = new AtomicBoolean(false);
-//            return client.prompt()
-//                    .system(systemPromptResource)
-//                    .system("It is mandatory to use the provided tools to assist with help desk ticket management.")
-//                    .system("use the tools exactly as described ")
-//                    .tools(ticketDatabaseTool)
-//                    .options(ChatOptions.builder()
-//                            .model(modelName)
-//                            .build())
-//                    .user(request.messages().content())
-//                    .stream()
-//                    .content()
-//                    .doOnComplete(() -> {
-//                        if (toolUsed.get()) {
-//                            chatMemory.clear(conversationId);
-//                            log.info("🧹 Cleared conversation memory for conversationId {}", conversationId);
-//                        }
-//                    });
-//        } catch (Exception ex) {
-//            log.error("Model call failed: {}", ex.getLocalizedMessage());
-//            throw new RuntimeException("Model call failed: " + modelName);
-//        }
-//    }
 }
 

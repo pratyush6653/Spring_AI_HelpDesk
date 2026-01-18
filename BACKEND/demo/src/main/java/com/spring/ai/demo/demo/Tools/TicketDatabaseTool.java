@@ -20,7 +20,7 @@ public class TicketDatabaseTool {
     public TicketView createTicket(
             @ToolParam(description = "User's  name") String userName,
             @ToolParam(description = "User's email address") String email,
-            @ToolParam(description = "Brief description of the issue") String summary,
+            @ToolParam(description = "Summary of the issue") String summary,
             @ToolParam(description = "Priority: High, Medium, or Low") String priority
     ) {
         TicketCommand ticketCommand = new TicketCommand(

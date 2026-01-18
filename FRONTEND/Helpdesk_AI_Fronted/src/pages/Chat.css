@@ -734,7 +734,7 @@
 
 /* End Chat Action Button (appears when chat is active) */
 .end-chat-action-btn {
-  display: flex;
+  display: center;
   align-items: center;
   gap: 6px;
   padding: 10px 20px;
